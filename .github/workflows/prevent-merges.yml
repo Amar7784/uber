@@ -1,0 +1,70 @@
+# .github/workflows/prevent-merges.yml
+
+name: '🚫 Prevent Forbidden Merges'
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - 'feature_0000_parent'
+      - 'feature_0000_parent_egis_team2'
+      - 'develop'
+      - 'develop_egis_team2'
+      - 'release'
+
+jobs:
+  verify-merge-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 'Check for forbidden merge combinations'
+        run: |
+          # The source branch of the PR
+          SOURCE_BRANCH="${{ github.head_ref }}"
+          # The target branch of the PR
+          TARGET_BRANCH="${{ github.base_ref }}"
+
+          echo "Checking merge: $SOURCE_BRANCH -> $TARGET_BRANCH"
+
+          FORBIDDEN_MERGE=false
+
+          # Define forbidden merges
+          case "$SOURCE_BRANCH" in
+            "feature_0000_parent")
+              if [[ "$TARGET_BRANCH" == "feature_0000_parent_egis_team2" || "$TARGET_BRANCH" == "release" ]]; then
+                FORBIDDEN_MERGE=true
+              fi
+              ;;
+            "feature_0000_parent_egis_team2")
+              if [[ "$TARGET_BRANCH" == "feature_0000_parent" || "$TARGET_BRANCH" == "release" ]]; then
+                FORBIDDEN_MERGE=true
+              fi
+              ;;
+            "develop")
+              if [[ "$TARGET_BRANCH" == "develop_egis_team2" ]]; then
+                FORBIDDEN_MERGE=true
+              fi
+              ;;
+            "develop_egis_team2")
+              if [[ "$TARGET_BRANCH" == "develop" ]]; then
+                FORBIDDEN_MERGE=true
+              fi
+              ;;
+            "release")
+              if [[ "$TARGET_BRANCH" == "feature_0000_parent" || "$TARGET_BRANCH" == "feature_0000_parent_egis_team2" || "$TARGET_BRANCH" == "develop" || "$TARGET_BRANCH" == "develop_egis_team2" ]]; then
+                FORBIDDEN_MERGE=true
+              fi
+              ;;
+            "main")
+              if [[ "$TARGET_BRANCH" == "release" ]]; then
+                FORBIDDEN_MERGE=true
+              fi
+              ;;
+          esac
+
+          if [[ "$FORBIDDEN_MERGE" == true ]]; then
+            echo "❌ ERROR: Merging from '$SOURCE_BRANCH' to '$TARGET_BRANCH' is not allowed."
+            exit 1
+          else
+            echo "✅ Merge is allowed."
+            exit 0
+          fi
